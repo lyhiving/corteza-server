@@ -12,19 +12,29 @@ import (
 	atypes "github.com/cortezaproject/corteza-server/automation/types"
 	"context"
 	"github.com/cortezaproject/corteza-server/pkg/expr"
+	"github.com/cortezaproject/corteza-server/pkg/logger"
+	"github.com/cortezaproject/corteza-server/pkg/wfexec"
+	"go.uber.org/zap"
 {{- range .Imports }}
   {{ normalizeImport . }}
 {{- end }}
 )
 
-var (
-	{{ $.Name }} = &{{ $.Name }}Handler{}
+var _ wfexec.ExecResponse
+
+type (
+	{{ $.Name }}HandlerRegistry interface {
+		AddFunctions(ff ...*atypes.Function)
+		Type(ref string) expr.Type
+	}
 )
 
-func (h {{ $.Name }}Handler) register(reg func(*atypes.Function)) {
-{{- range .Functions }}
-	reg(h.{{ export .Name }}())
-{{- end }}
+func (h {{ $.Name }}Handler) register() {
+	h.reg.AddFunctions(
+	{{- range .Functions }}
+		h.{{ export .Name }}(),
+	{{- end }}
+	)
 }
 
 {{ range .Functions }}
@@ -35,6 +45,7 @@ func (h {{ $.Name }}Handler) register(reg func(*atypes.Function)) {
 
 type (
 	{{ $ARGS }} struct {
+		log *zap.Logger
 		{{ range .Params }}
 			{{ $NAME := .Name }}
 			has{{ export .Name }} bool
@@ -87,7 +98,7 @@ func (h {{ $.Name }}Handler) {{ export .Name }}() *atypes.Function {
 		{{- range .Params }}
 			{
 				Name: {{ printf "%q" .Name }},
-				Types: []string{ {{ range .Types }}({{ .WorkflowType }}{}).Type(),{{ end }} },
+				Types: []string{ {{ range .Types }}{{ printf "%q" .WorkflowType }},{{ end }} },
 				{{- if .Required }}Required: true,{{ end }}
 				{{- if .SetOf }}SetOf: true,{{ end }}
 				{{- if .Meta }}
@@ -107,19 +118,76 @@ func (h {{ $.Name }}Handler) {{ export .Name }}() *atypes.Function {
 		{{- end }}
 		},
 
-		{{ if .Results }}
+		{{ if .Iterator }}
+		IsIterator: true,
+
+		{{ else if .Results }}
 		Results: []*atypes.Param{
 		{{ range .Results }}
-			atypes.NewParam({{ printf "%q" .Name }},
-				atypes.Types(&{{ .WorkflowType }}{}),
-			),
+			{
+				Name: {{ printf "%q" .Name }},
+				Types: []string{ {{ printf "%q" .WorkflowType }} },
+				{{- if .Required }}Required: true,{{ end }}
+				{{- if .SetOf }}SetOf: true,{{ end }}
+				{{- if .Meta }}
+				Meta: &atypes.ParamMeta{
+					{{- if .Meta.Label }}
+					Label: {{ printf "%#v" .Meta.Label }},
+					{{- end }}
+					{{- if .Meta.Description }}
+					Description: {{ printf "%#v" .Meta.Description }},
+					{{- end }}
+					{{- if .Meta.Visual }}
+					Visual: {{ printf "%#v" .Meta.Visual }},
+					{{- end }}
+				},
+				{{ end }}
+			},
 		{{ end }}
 		},
 		{{ end }}
 
+		{{ if .Iterator }}
+		Iterator: func(ctx context.Context, in expr.Vars) (out wfexec.IteratorHandler, err error) {
+			var (
+				args = &{{ $ARGS }}{
+					log: logger.ContextValue(ctx, zap.NewNop()).
+						With(zap.String("function", {{ printf "%q" ( $REF ) }})),
+				{{- range .Params }}
+					has{{ export .Name }}: in.Has({{ printf "%q" .Name }}),
+				{{- end }}
+				}
+
+				{{ if .Results }}
+				results *{{ $RESULTS }}
+				{{ end }}
+			)
+
+			if err = in.Decode(args); err != nil {
+				return
+			}
+
+			{{ range .Params }}
+				{{ $NAME := .Name }}
+				{{ if gt (len .Types) 1 }}
+				// Converting {{ export .Name }} to go type
+				switch casted := args.{{ export .Name }}.(type) {
+				{{- range .Types }}
+					case {{ .GoType }}:
+						args.{{ $NAME }}{{ export .Suffix }} = casted
+				{{- end -}}
+				}
+				{{- end }}
+			{{ end }}
+
+			return h.{{ .Name }}(ctx, args)
+		},
+		{{ else }}
 		Handler: func(ctx context.Context, in expr.Vars) (out expr.Vars, err error) {
 			var (
 				args = &{{ $ARGS }}{
+					log: logger.ContextValue(ctx, zap.NewNop()).
+						With(zap.String("function", {{ printf "%q" ( $REF ) }})),
 				{{- range .Params }}
 					has{{ export .Name }}: in.Has({{ printf "%q" .Name }}),
 				{{- end }}
@@ -156,7 +224,7 @@ func (h {{ $.Name }}Handler) {{ export .Name }}() *atypes.Function {
 			out = expr.Vars{}
 
 			{{- range .Results }}
-			if out[{{ printf "%q" .Name }}], err = ({{ .WorkflowType }}{}).Cast(results.{{ export .Name }}); err != nil {
+			if out[{{ printf "%q" .Name }}], err = h.reg.Type({{ printf "%q" .WorkflowType }}).Cast(results.{{ export .Name }}); err != nil {
 				return nil, err
 			}
 			{{- end }}
@@ -166,6 +234,7 @@ func (h {{ $.Name }}Handler) {{ export .Name }}() *atypes.Function {
 			return out, h.{{ .Name }}(ctx, args)
 			{{- end }}
 		},
+		{{ end }}
 	}
 }
 {{ end }}

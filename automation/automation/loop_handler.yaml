@@ -1,0 +1,45 @@
+name: loop
+
+imports:
+  - io
+
+
+functions:
+  sequence:
+    iterator: true
+    meta:
+      short: Iterates over sequence of numbers
+    params:
+      first: { types: [ { wf: Integer, go: 'int64' } ] }
+      last:  { types: [ { wf: Integer, go: 'int64' } ] }
+      step:  { types: [ { wf: Integer, go: 'int64' } ] }
+
+  do:
+    iterator: true
+    meta:
+      short: Iterates while condition is true
+    params:
+      while:
+        required: true
+        types: [ { wf: String, go: 'string' } ]
+        meta:
+          label: Expression tested before each iteration
+          description: Expression to be evaluated each iteration; loop will continue until expression is true
+
+  each:
+    iterator: true
+    meta:
+      short: Iterates over set of items
+    params:
+      items:
+        required: true
+        types: [ { wf: Any, go: "[]interface{}" } ]
+
+  lines:
+    iterator: true
+    meta:
+      short: Iterates over lines from stream
+    params:
+      stream:
+        required: true
+        types: [ { wf: Reader, go: "io.Reader" } ]

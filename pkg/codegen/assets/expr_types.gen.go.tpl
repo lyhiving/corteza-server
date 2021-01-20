@@ -39,7 +39,7 @@ func New{{ $exprType }}(new interface{}) ({{ $TypedValue }}, error) {
 func (t {{ $exprType }}) Get() interface{}                         { return t.value }
 
 // Returns type name
-func ({{ $exprType }}) Type() string                               { return "{{ $exprType }}" }
+func ({{ $exprType }}) Type() string                               { return "{{ $.Prefix }}{{ $exprType }}" }
 
 // Casts value to {{ $nativeType }}
 func ({{ $exprType }}) Cast(value interface{}) ({{ $TypedValue }}, error) { return New{{ $exprType }}(value) }

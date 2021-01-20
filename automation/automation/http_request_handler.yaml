@@ -1,0 +1,100 @@
+name: httpRequest
+
+imports:
+  - time
+  - net/http
+  - net/url
+  - io
+
+params:
+  url: &url
+    required: true
+    types:
+      - { wf: String,   go: 'string' }
+  method: &method
+    required: true
+    types:
+      - { wf: String,   go: 'string' }
+  params: &params
+    types:
+      - { wf: KVV,      go: 'url.Values' }
+  headers: &headers
+    types:
+      - { wf: KVV,      go: 'http.Header' }
+  headerAuthBearer: &headerAuthBearer
+    types:
+      - { wf: String,   go: 'string' }
+  headerAuthUsername: &headerAuthUsername
+    types:
+      - { wf: String,   go: 'string' }
+  headerAuthPassword: &headerAuthPassword
+    types:
+      - { wf: String,   go: 'string' }
+  headerContentType: &headerContentType
+    types:
+      - { wf: String,   go: 'string' }
+  headerUserAgent: &headerUserAgent
+    types:
+      - { wf: String,   go: 'string' }
+  timeout: &timeout
+    types:
+      - { wf: Duration, go: 'time.Duration' }
+  form: &form
+    types:
+      - { wf: KVV,      go: 'url.Values' }
+  body: &body
+    types:
+      - { wf: String,   go: 'string',      suffix: String }
+      - { wf: Reader,   go: 'io.Reader',   suffix: Stream }
+      - { wf: Any,      go: 'interface{}', suffix: Raw }
+
+results:
+  status: &rStatus
+    wf: String
+    go: string
+
+  stautsCode: &rStatusCode
+    wf: Integer
+    go: int
+
+
+  headers: &rHeaders
+    wf: KVV
+    go: http.Header
+
+  contentLength: &rContentLength
+    wf: Integer
+    go: int64
+
+  contentType: &rContentType
+    wf: String
+    go: string
+
+  body: &rBody
+    wf: Reader
+    go: io.Reader
+
+functions:
+  send:
+    meta:
+      short: Sends HTTP request
+    params:
+      url:                *url
+      method:             *method
+      params:             *params
+      headers:            *headers
+      headerAuthBearer:   *headerAuthBearer
+      headerAuthUsername: *headerAuthUsername
+      headerAuthPassword: *headerAuthPassword
+      headerUserAgent:    *headerUserAgent
+      headerContentType:  *headerContentType
+      timeout:            *timeout
+      form:               *form
+      body:               *body
+    results:
+      status:             *rStatus
+      statusCode:         *rStatusCode
+      headers:            *rHeaders
+      contentLength:      *rContentLength
+      contentType:        *rContentType
+      body:               *rBody

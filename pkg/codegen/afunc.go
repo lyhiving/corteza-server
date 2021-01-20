@@ -31,10 +31,11 @@ type (
 	aFunctionSet []aFuncDef
 
 	aFuncDef struct {
-		Name    string
-		Meta    *types.FunctionMeta
-		Params  aFuncParamSet
-		Results aFuncResultSet
+		Name     string
+		Iterator bool
+		Meta     *types.FunctionMeta
+		Params   aFuncParamSet
+		Results  aFuncResultSet
 	}
 
 	aFuncParamSet  []*aFuncParamDef

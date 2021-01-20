@@ -1,0 +1,18 @@
+package: expr
+imports:
+  - io
+  - time
+
+types:
+  Any:             'interface{}'
+  Boolean:         'bool'
+  ID:              'uint64'
+  Integer:         'int64'
+  UnsignedInteger: 'uint64'
+  Float:           'float64'
+  String:          'string'
+  DateTime:        '*time.Time'
+  Duration:        'time.Duration'
+  KV:              'map[string]string'
+  KVV:             'map[string][]string'
+  Reader:          'io.Reader'
