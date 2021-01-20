@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/cortezaproject/corteza-server/pkg/expr"
+	"github.com/cortezaproject/corteza-server/pkg/logger"
 	"github.com/cortezaproject/corteza-server/pkg/wfexec"
+	"go.uber.org/zap"
+	"time"
 )
 
 type (
@@ -14,7 +17,7 @@ type (
 	// workflow functions are defined in the core code and through plugins
 	Function struct {
 		Ref        string        `json:"ref,omitempty"`
-		IsIterator bool          `json:"iterator,omitempty"`
+		Type       string        `json:"type,omitempty"`
 		Meta       *FunctionMeta `json:"meta,omitempty"`
 		Parameters ParamSet      `json:"parameters,omitempty"`
 		Results    ParamSet      `json:"results,omitempty"`
@@ -40,13 +43,19 @@ type (
 		identifiableStep
 		def       *Function
 		arguments ExprSet
+		results   ExprSet
 		next      wfexec.Step
 		exit      wfexec.Step
 	}
 )
 
+const (
+	FTypeStandard = ""
+	FTypeIterator = "iterator"
+)
+
 func FunctionStep(def *Function, arguments, results ExprSet) (*functionStep, error) {
-	if def.IsIterator {
+	if def.Type != "" {
 		return nil, fmt.Errorf("expecting non-iterator function")
 	}
 
@@ -55,9 +64,27 @@ func FunctionStep(def *Function, arguments, results ExprSet) (*functionStep, err
 
 func (f *functionStep) Exec(ctx context.Context, r *wfexec.ExecRequest) (wfexec.ExecResponse, error) {
 	var (
+		started       = time.Now()
 		args, results expr.Vars
 		err           error
+
+		log = logger.ContextValue(ctx, zap.NewNop()).With(
+			zap.String("functionRef", f.def.Ref),
+			zap.String("functionType", "function"),
+		)
 	)
+
+	defer func() {
+		log := log.With(zap.Duration("execTime", time.Now().Sub(started)))
+
+		if err == nil {
+			log.Debug("executed")
+		} else {
+			log.Warn("executed with errors", zap.Error(err))
+		}
+	}()
+
+	ctx = logger.ContextWithValue(ctx, log)
 
 	if len(f.arguments) > 0 {
 		// Arguments defined, get values from scope and use them when calling
@@ -87,7 +114,7 @@ func (f *functionStep) Exec(ctx context.Context, r *wfexec.ExecRequest) (wfexec.
 }
 
 func IteratorStep(def *Function, arguments ExprSet, next, exit wfexec.Step) (*iteratorStep, error) {
-	if !def.IsIterator {
+	if def.Type != FTypeIterator {
 		return nil, fmt.Errorf("expecting iterator function")
 	}
 
@@ -96,10 +123,26 @@ func IteratorStep(def *Function, arguments ExprSet, next, exit wfexec.Step) (*it
 
 func (f *iteratorStep) Exec(ctx context.Context, r *wfexec.ExecRequest) (wfexec.ExecResponse, error) {
 	var (
-		args expr.Vars
-		err  error
-		ih   wfexec.IteratorHandler
+		started = time.Now()
+		args    expr.Vars
+		err     error
+		ih      wfexec.IteratorHandler
+
+		log = logger.ContextValue(ctx, zap.NewNop()).With(
+			zap.String("functionRef", f.def.Ref),
+			zap.String("functionType", "iterator"),
+		)
 	)
+
+	defer func() {
+		log := log.With(zap.Duration("execTime", time.Now().Sub(started)))
+
+		if err == nil {
+			log.Debug("executed")
+		} else {
+			log.Warn("executed with errors", zap.Error(err))
+		}
+	}()
 
 	if len(f.arguments) > 0 {
 		// Arguments defined, get values from scope and use them when calling
@@ -115,4 +158,13 @@ func (f *iteratorStep) Exec(ctx context.Context, r *wfexec.ExecRequest) (wfexec.
 	}
 
 	return wfexec.GenericIterator(f, f.next, f.exit, ih), nil
+}
+
+func (f *iteratorStep) EvalResults(ctx context.Context, results expr.Vars) (out expr.Vars, err error) {
+	if len(f.results) == 0 {
+		// No results defined, nothing to return
+		return expr.Vars{}, nil
+	}
+
+	return f.results.Eval(ctx, results)
 }

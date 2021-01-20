@@ -2,11 +2,11 @@ package expr
 
 import (
 	"fmt"
+	"github.com/cortezaproject/corteza-server/pkg/handle"
 	"github.com/spf13/cast"
 	"io"
 	"net/http"
 	"net/url"
-	"reflect"
 	"time"
 )
 
@@ -41,58 +41,6 @@ func (t *Unresolved) Set(new interface{}, pp ...string) (err error) {
 	return fmt.Errorf("can not set on unresolved type")
 }
 
-// Decode on Any to handle basic type casting
-//
-// Decode fn is called when decoding Vars into struct
-func (t Any) Decode(v reflect.Value) (err error) {
-	var (
-		vBool    bool
-		vInt64   int64
-		vUint64  uint64
-		vFloat64 float64
-		vString  string
-	)
-
-	switch v.Kind() {
-	case reflect.Bool:
-		if vBool, err = cast.ToBoolE(t.value); err == nil {
-			v.SetBool(vBool)
-		}
-
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		if vInt64, err = cast.ToInt64E(t.value); err == nil {
-			v.SetInt(vInt64)
-		}
-
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		if vUint64, err = cast.ToUint64E(t.value); err == nil {
-			v.SetUint(vUint64)
-		}
-
-	case reflect.Float32, reflect.Float64:
-		if vFloat64, err = cast.ToFloat64E(t.value); err == nil {
-			v.SetFloat(vFloat64)
-		}
-
-	case reflect.String:
-		if vString, err = cast.ToStringE(t.value); err == nil {
-			v.SetString(vString)
-		}
-
-	case reflect.Interface:
-		v.Set(reflect.ValueOf(t.value))
-
-	default:
-		return fmt.Errorf("failed to cast Any to %s", v.Kind())
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to cast Any to %s: %w", v.Kind(), err)
-	}
-
-	return
-}
-
 func (t *Any) Set(new interface{}, pp ...string) (err error) {
 	if err = ReqNoPath(t.Type(), pp); err != nil {
 		return
@@ -102,10 +50,6 @@ func (t *Any) Set(new interface{}, pp ...string) (err error) {
 	return
 }
 
-// Decode for Boolean
-//
-// Decode fn is called when decoding Vars into struct
-func (t Boolean) Decode(v reflect.Value) error { v.SetBool(t.value); return nil }
 func (t *Boolean) Set(new interface{}, pp ...string) (err error) {
 	var aux bool
 	if err = ReqNoPath(t.Type(), pp); err != nil {
@@ -124,15 +68,10 @@ func (t *Boolean) Set(new interface{}, pp ...string) (err error) {
 	return
 }
 
-// Decode for ID
-//
-// Decode fn is called when decoding Vars into struct
-func (t ID) Decode(v reflect.Value) error { v.SetUint(t.value); return nil }
 func (t *ID) Set(new interface{}, pp ...string) (err error) {
 	return SetIDWithPath(&t.value, new, pp...)
 }
 
-func (t Integer) Decode(v reflect.Value) error { v.SetInt(t.value); return nil }
 func (t *Integer) Set(new interface{}, pp ...string) (err error) {
 	new = UnwindTyped(new)
 
@@ -153,10 +92,6 @@ func (t *Integer) Set(new interface{}, pp ...string) (err error) {
 	return
 }
 
-// Decode for ID
-//
-// Decode fn is called when decoding Vars into struct
-func (t UnsignedInteger) Decode(v reflect.Value) error { v.SetUint(t.value); return nil }
 func (t *UnsignedInteger) Set(new interface{}, pp ...string) (err error) {
 	new = UnwindTyped(new)
 
@@ -177,10 +112,6 @@ func (t *UnsignedInteger) Set(new interface{}, pp ...string) (err error) {
 	return
 }
 
-// Decode for Float
-//
-// Decode fn is called when decoding Vars into struct
-func (t Float) Decode(v reflect.Value) error { v.SetFloat(t.value); return nil }
 func (t *Float) Set(new interface{}, pp ...string) (err error) {
 	new = UnwindTyped(new)
 
@@ -197,10 +128,6 @@ func (t *Float) Set(new interface{}, pp ...string) (err error) {
 	return
 }
 
-// Decode for String
-//
-// Decode fn is called when decoding Vars into struct
-func (t String) Decode(v reflect.Value) error { v.SetString(t.value); return nil }
 func (t *String) Set(new interface{}, pp ...string) (err error) {
 	new = UnwindTyped(new)
 
@@ -212,6 +139,27 @@ func (t *String) Set(new interface{}, pp ...string) (err error) {
 
 	if aux, err = cast.ToStringE(new); err != nil {
 		return
+	}
+
+	t.value = aux
+	return
+}
+
+func (t *Handle) Set(new interface{}, pp ...string) (err error) {
+	new = UnwindTyped(new)
+
+	var aux string
+	if err = ReqNoPath(t.Type(), pp); err != nil {
+		panic(err.Error())
+		return
+	}
+
+	if aux, err = cast.ToStringE(new); err != nil {
+		return
+	}
+
+	if !handle.IsValid(aux) {
+		return fmt.Errorf("invalid handle: %q", aux)
 	}
 
 	t.value = aux

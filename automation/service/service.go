@@ -100,6 +100,7 @@ func Initialize(ctx context.Context, log *zap.Logger, s store.Storer, c Config) 
 		&expr.UnsignedInteger{},
 		&expr.Float{},
 		&expr.String{},
+		&expr.Handle{},
 		&expr.DateTime{},
 		&expr.Duration{},
 		&expr.KV{},

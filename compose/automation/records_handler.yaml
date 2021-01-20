@@ -6,10 +6,9 @@ imports:
 
 params:
   module: &module
-    required: true
     types:
       - { wf: ID,                 go: uint64,          suffix: ID }
-      - { wf: String,             go: string,          suffix: handle }
+      - { wf: Handle,             go: string,          suffix: handle }
       - { wf: ComposeModule,      go: "*types.Module", suffix: res }
     meta:
       label: Module to set record type
@@ -19,19 +18,16 @@ params:
         modules can be located in different stores.
 
   namespace: &namespace
-    required: true
     types:
       - { wf: ID,                 go: uint64,             suffix: ID }
-      - { wf: String,             go: string,             suffix: handle }
+      - { wf: Handle,             go: string,             suffix: handle }
       - { wf: ComposeNamespace,   go: "*types.Namespace", suffix: res }
 
   record: &record
-    required: true
     types:
       - { wf: ComposeRecord,      go: "*types.Record" }
 
   recordID: &recordID
-    required: true
     types:
       - { wf: ID,          go: uint64 }
 
@@ -57,9 +53,15 @@ functions:
     meta:
       short: Lookup for compose record by ID
     params:
-      recordID: *recordID
-      module: *module
-      namespace: *namespace
+      recordID:
+        <<: *recordID
+        required: true
+      module:
+        <<: *module
+        required: true
+      namespace:
+        <<: *namespace
+        required: true
     results:
       record: *recordReturnValue
 
@@ -67,27 +69,62 @@ functions:
     meta:
       short: Save record
     params:
-      record: *record
+      record:
+        <<: *record
+        required: true
     results:
       record: *recordReturnValue
 
-  # @todo validate
-  #       -> record
-  #       <- errors RVSE
-  #       <- valid  (bool)
+  validate:
+    meta:
+      short: Validate record
+    params:
+      record:
+        <<: *record
+        required: true
+      module: *module
+      namespace: *namespace
+    results:
+      valid:
+        wf: Boolean
+        go: bool
+        meta:
+          label: Set to true when record is valid
+      errors:
+        wf: RecordValueErrorSet,
+        go: '*types.RecordValueErrorSet'
+        meta:
+          label: List of errors collected when validating the record
 
-  # @todo copy
-  #       -> source  Record
-  #       -> target  Record
-  #       -> include []string list of fields from source record to copy
-  #       -> exclude []string list of fields from source record to copy
+  convert:
+    meta:
+      short: Converts record
+    params:
+      source:
+        <<: *record
+        required: true
+      module:
+        <<: *module
+        required: true
+      namespace:
+        <<: *namespace
+        required: true
+      map:
+        types:
+          - { wf: KV, go: 'map[string]string' }
+    results:
+      record: *recordReturnValue
 
   create:
     meta:
       short: Creates and stores a new record
     params:
-      module: *module
-      namespace: *namespace
+      module:
+        <<: *module
+        required: true
+      namespace:
+        <<: *namespace
+        required: true
       values: *values
       labels: *labels
       ownedBy: *ownedBy
@@ -98,8 +135,12 @@ functions:
     meta:
       short: Updates an existing record
     params:
-      module: *module
-      namespace: *namespace
+      module:
+        <<: *module
+        required: true
+      namespace:
+        <<: *namespace
+        required: true
       values: *values
       labels: *labels
       ownedBy: *ownedBy
@@ -110,9 +151,15 @@ functions:
     meta:
       short: Soft deletes compose record by ID
     params:
-      recordID: *recordID
-      module: *module
-      namespace: *namespace
+      recordID:
+        <<: *recordID
+        required: true
+      module:
+        <<: *module
+        required: true
+      namespace:
+        <<: *namespace
+        required: true
 
 #  restore:
 #    meta:

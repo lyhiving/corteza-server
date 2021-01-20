@@ -14,17 +14,21 @@ type (
 )
 
 func (i *sequenceIterator) More(context.Context, expr.Vars) (bool, error) {
-	return i.counter*(i.cStep/i.cStep) < i.cLast*(i.cStep/i.cStep), nil
+	return i.more(), nil
+}
+
+func (i *sequenceIterator) more() bool {
+	return i.counter*(i.cStep/i.cStep) < i.cLast*(i.cStep/i.cStep)
 }
 
 func (i *sequenceIterator) Start(context.Context, expr.Vars) error { return nil }
 
 func (i *sequenceIterator) Next(context.Context, expr.Vars) (expr.Vars, error) {
-	scope := expr.Vars{}
-	scope["counter"], _ = expr.NewInteger(i.counter)
-	scope["first"], _ = expr.NewInteger(i.cStep)
-	scope["last"], _ = expr.NewInteger(i.counter)
-	scope["step"], _ = expr.NewInteger(i.counter)
+	scope := expr.Vars{
+		"counter": expr.Must(expr.NewInteger(i.counter)),
+		"isFirst": expr.Must(expr.NewBoolean(i.counter == i.cFirst)),
+		"isLast":  expr.Must(expr.NewBoolean(!i.more())),
+	}
 
 	i.counter = i.counter + i.cStep
 	return scope, nil
@@ -62,12 +66,10 @@ func (i *collectionIterator) More(ctx context.Context, scope expr.Vars) (bool, e
 func (i *collectionIterator) Start(context.Context, expr.Vars) error { i.ptr = 0; return nil }
 
 func (i *collectionIterator) Next(context.Context, expr.Vars) (expr.Vars, error) {
-	if item, err := expr.NewAny(i.set[i.ptr]); err != nil {
-		return nil, err
-	} else {
-		i.ptr++
-		return expr.Vars{"item": item}, nil
-	}
+	out := expr.Vars{"item": expr.Must(expr.NewAny(i.set[i.ptr]))}
+	i.ptr++
+
+	return out, nil
 }
 
 type (
@@ -90,6 +92,5 @@ func (i *lineIterator) Next(context.Context, expr.Vars) (expr.Vars, error) {
 		return nil, err
 	}
 
-	line, _ := expr.NewString(i.s.Text())
-	return expr.Vars{"line": line}, nil
+	return expr.Vars{"line": expr.Must(expr.NewString(i.s.Text()))}, nil
 }

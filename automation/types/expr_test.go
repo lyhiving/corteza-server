@@ -53,28 +53,36 @@ func TestExprSet_Eval(t *testing.T) {
 					"bb": etv(expr.NewString("vv")),
 				},
 			},
-			//{
-			//	name: "copy var with type",
-			//	set: ExprSet{
-			//		&Expr{Target: "aa", Value: "vv", typ: &expr.String{}},
-			//		&Expr{Target: "bb", Source: "aa"},
-			//	},
-			//	output: expr.Vars{
-			//		"aa": etv(expr.NewString("vv")),
-			//		"bb": etv(expr.NewString("vv")),
-			//	},
-			//},
-			//{
-			//	name: "copy var to target with type",
-			//	set: ExprSet{
-			//		&Expr{Target: "aa", Value: "vv", typ: &expr.String{}},
-			//		&Expr{Target: "bb", Source: "aa"},
-			//	},
-			//	output: expr.Vars{
-			//		"aa": etv(expr.NewString("vv")),
-			//		"bb": etv(expr.NewString("vv")),
-			//	},
-			//},
+			{
+				name: "copy var with type",
+				set: ExprSet{
+					&Expr{Target: "aa", Value: "should be always String", typ: &expr.String{}},
+					&Expr{Target: "bb", Source: "aa"},
+				},
+				output: expr.Vars{
+					"aa": etv(expr.NewString("should be always String")),
+					"bb": etv(expr.NewString("should be always String")),
+				},
+			},
+			{
+				name: "copy var to target with type",
+				set: ExprSet{
+					&Expr{Target: "aa", Value: "42", typ: &expr.String{}},
+					&Expr{Target: "bb", Source: "aa", typ: &expr.Integer{}},
+				},
+				output: expr.Vars{
+					"aa": etv(expr.NewString("42")),
+					"bb": etv(expr.NewInteger(42)),
+				},
+			},
+			{
+				name: "assign into incompatible",
+				set: ExprSet{
+					&Expr{Target: "aa", Value: "foo", typ: &expr.String{}},
+					&Expr{Target: "bb", Source: "aa", typ: &expr.Integer{}},
+				},
+				err: "unable to cast \"foo\" of type string to int64",
+			},
 		}
 	)
 	for _, c := range cc {

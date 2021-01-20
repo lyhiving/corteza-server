@@ -154,7 +154,7 @@ func NewSession(ctx context.Context, g *Graph, oo ...sessionOpt) *Session {
 	}
 
 	s.log = s.log.
-		WithOptions(zap.AddStacktrace(zap.PanicLevel)).
+		WithOptions(zap.AddStacktrace(zap.ErrorLevel)).
 		With(zap.Uint64("sessionId", s.id))
 
 	go s.worker(ctx)
@@ -346,7 +346,7 @@ func (s *Session) worker(ctx context.Context) {
 				return
 			}
 
-			s.log.Error("worker done", zap.Error(err))
+			s.log.Warn("worker completed with error", zap.Error(err))
 			s.mux.Lock()
 			s.err = err
 			s.mux.Unlock()
@@ -401,13 +401,32 @@ func (s *Session) exec(ctx context.Context, st *State) {
 		log = log.With(zap.Uint64("step", st.step.ID()))
 	}
 
+	defer func() {
+		reason := recover()
+		if reason == nil {
+			return
+		}
+
+		switch reason := reason.(type) {
+		case error:
+			log.Error("workflow session crashed", zap.Error(reason))
+			s.qErr <- fmt.Errorf("session %d step %d crashed: %w", s.id, st.step.ID(), reason)
+		default:
+			log.Error("workflow session crashed", zap.Any("reason", reason))
+			s.qErr <- fmt.Errorf("session %d step %d crashed: %v", s.id, st.step.ID(), reason)
+		}
+
+	}()
+
 	s.eventHandler(SessionActive, st, s)
 
 	{
 		if currLoop != nil && currLoop.Is(st.step) {
 			result = currLoop
 		} else {
-			ctx = logger.ContextWithValue(ctx, log)
+			// push logger to context but raise the stacktrace level to panic
+			// to prevent overly verbose traces
+			ctx = logger.ContextWithValue(ctx, log.WithOptions(zap.AddStacktrace(zap.PanicLevel)))
 
 			// Context received in exec() wil not have the identity we're expecting
 			// so we need to pull it from state owner and add it to new context
@@ -431,10 +450,18 @@ func (s *Session) exec(ctx context.Context, st *State) {
 
 				// handling error with error handling
 				// step set in one of the previous steps
-				log.Debug("step execution error handled", zap.Uint64("errorHandlerStepId", st.errHandler.ID()))
+				log.Warn("step execution error handled",
+					zap.Uint64("errorHandlerStepId", st.errHandler.ID()),
+					zap.Error(st.err),
+				)
 				scope["error"], _ = expr.NewString(st.err.Error())
-				if err := s.enqueue(ctx, st.Next(st.errHandler, scope)); err != nil {
-					log.Error("unable to queue", zap.Error(err))
+
+				// copy error handler & disable it on state to prevent inf. loop
+				// in case of another error in the error-handling branch
+				eh := st.errHandler
+				st.errHandler = nil
+				if err := s.enqueue(ctx, st.Next(eh, scope)); err != nil {
+					log.Warn("unable to queue", zap.Error(err))
 				}
 
 				return

@@ -12,9 +12,7 @@ import (
 	"context"
 	atypes "github.com/cortezaproject/corteza-server/automation/types"
 	"github.com/cortezaproject/corteza-server/pkg/expr"
-	"github.com/cortezaproject/corteza-server/pkg/logger"
 	"github.com/cortezaproject/corteza-server/pkg/wfexec"
-	"go.uber.org/zap"
 )
 
 var _ wfexec.ExecResponse
@@ -37,15 +35,11 @@ func (h logHandler) register() {
 
 type (
 	logDebugArgs struct {
-		log *zap.Logger
-
 		hasMessage bool
-
-		Message string
+		Message    string
 
 		hasFields bool
-
-		Fields map[string]string
+		Fields    map[string]string
 	}
 )
 
@@ -57,7 +51,8 @@ type (
 // }
 func (h logHandler) Debug() *atypes.Function {
 	return &atypes.Function{
-		Ref: "logDebug",
+		Ref:  "logDebug",
+		Type: "",
 		Meta: &atypes.FunctionMeta{
 			Short: "Writes debug log message",
 		},
@@ -76,8 +71,6 @@ func (h logHandler) Debug() *atypes.Function {
 		Handler: func(ctx context.Context, in expr.Vars) (out expr.Vars, err error) {
 			var (
 				args = &logDebugArgs{
-					log: logger.ContextValue(ctx, zap.NewNop()).
-						With(zap.String("function", "logDebug")),
 					hasMessage: in.Has("message"),
 					hasFields:  in.Has("fields"),
 				}
@@ -94,15 +87,11 @@ func (h logHandler) Debug() *atypes.Function {
 
 type (
 	logInfoArgs struct {
-		log *zap.Logger
-
 		hasMessage bool
-
-		Message string
+		Message    string
 
 		hasFields bool
-
-		Fields map[string]string
+		Fields    map[string]string
 	}
 )
 
@@ -114,7 +103,8 @@ type (
 // }
 func (h logHandler) Info() *atypes.Function {
 	return &atypes.Function{
-		Ref: "logInfo",
+		Ref:  "logInfo",
+		Type: "",
 		Meta: &atypes.FunctionMeta{
 			Short: "Writes info log message",
 		},
@@ -133,8 +123,6 @@ func (h logHandler) Info() *atypes.Function {
 		Handler: func(ctx context.Context, in expr.Vars) (out expr.Vars, err error) {
 			var (
 				args = &logInfoArgs{
-					log: logger.ContextValue(ctx, zap.NewNop()).
-						With(zap.String("function", "logInfo")),
 					hasMessage: in.Has("message"),
 					hasFields:  in.Has("fields"),
 				}
@@ -151,15 +139,11 @@ func (h logHandler) Info() *atypes.Function {
 
 type (
 	logWarnArgs struct {
-		log *zap.Logger
-
 		hasMessage bool
-
-		Message string
+		Message    string
 
 		hasFields bool
-
-		Fields map[string]string
+		Fields    map[string]string
 	}
 )
 
@@ -171,7 +155,8 @@ type (
 // }
 func (h logHandler) Warn() *atypes.Function {
 	return &atypes.Function{
-		Ref: "logWarn",
+		Ref:  "logWarn",
+		Type: "",
 		Meta: &atypes.FunctionMeta{
 			Short: "Writes warn log message",
 		},
@@ -190,8 +175,6 @@ func (h logHandler) Warn() *atypes.Function {
 		Handler: func(ctx context.Context, in expr.Vars) (out expr.Vars, err error) {
 			var (
 				args = &logWarnArgs{
-					log: logger.ContextValue(ctx, zap.NewNop()).
-						With(zap.String("function", "logWarn")),
 					hasMessage: in.Has("message"),
 					hasFields:  in.Has("fields"),
 				}
@@ -208,15 +191,11 @@ func (h logHandler) Warn() *atypes.Function {
 
 type (
 	logErrorArgs struct {
-		log *zap.Logger
-
 		hasMessage bool
-
-		Message string
+		Message    string
 
 		hasFields bool
-
-		Fields map[string]string
+		Fields    map[string]string
 	}
 )
 
@@ -228,7 +207,8 @@ type (
 // }
 func (h logHandler) Error() *atypes.Function {
 	return &atypes.Function{
-		Ref: "logError",
+		Ref:  "logError",
+		Type: "",
 		Meta: &atypes.FunctionMeta{
 			Short: "Writes error log message",
 		},
@@ -247,8 +227,6 @@ func (h logHandler) Error() *atypes.Function {
 		Handler: func(ctx context.Context, in expr.Vars) (out expr.Vars, err error) {
 			var (
 				args = &logErrorArgs{
-					log: logger.ContextValue(ctx, zap.NewNop()).
-						With(zap.String("function", "logError")),
 					hasMessage: in.Has("message"),
 					hasFields:  in.Has("fields"),
 				}

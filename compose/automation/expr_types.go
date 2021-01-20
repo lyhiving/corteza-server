@@ -1,6 +1,7 @@
 package automation
 
 import (
+	"context"
 	"fmt"
 	"github.com/cortezaproject/corteza-server/compose/types"
 	"github.com/cortezaproject/corteza-server/pkg/expr"
@@ -8,8 +9,40 @@ import (
 	"strings"
 )
 
-func (t *Record) Dict() map[string]interface{} {
-	return t.value.Dict()
+//func (t *Record) Dict() map[string]interface{} {
+//	return t.value.Dict()
+//}
+
+// `SelectGVal(ctx context.Context, k string) (interface{}, error)`
+func (t *Record) SelectGVal(ctx context.Context, k string) (interface{}, error) {
+	switch k {
+	case "ID":
+		return t.value.ID, nil
+	case "moduleID":
+		return t.value.ModuleID, nil
+	case "labels":
+		return t.value.Labels, nil
+	case "namespaceID":
+		return t.value.NamespaceID, nil
+	case "ownedBy":
+		return t.value.OwnedBy, nil
+	case "createdAt":
+		return t.value.CreatedAt, nil
+	case "createdBy":
+		return t.value.CreatedBy, nil
+	case "updatedAt":
+		return t.value.UpdatedAt, nil
+	case "updatedBy":
+		return t.value.UpdatedBy, nil
+	case "deletedAt":
+		return t.value.DeletedAt, nil
+	case "deletedBy":
+		return t.value.DeletedBy, nil
+	case "values":
+		return t.value.Values.Dict(t.value.GetModule().Fields), nil
+	default:
+		return nil, fmt.Errorf("no such field")
+	}
 }
 
 func (t *Record) Set(new interface{}, pp ...string) (err error) {
@@ -18,16 +51,13 @@ func (t *Record) Set(new interface{}, pp ...string) (err error) {
 	}
 
 	if len(pp) == 0 {
-		var (
-			ok  bool
-			aux *types.Record
-		)
-		aux, ok = new.(*types.Record)
-		if !ok {
+		switch new := new.(type) {
+		case *types.Record:
+			t.value = new
+		default:
 			return fmt.Errorf("unable to cast type %T to types.Record", new)
 		}
 
-		t.value = aux
 	} else {
 		return setRecordProps(t.value, new, pp...)
 	}
@@ -111,7 +141,7 @@ func setRecordValuesWithPath(rvs *types.RecordValueSet, new interface{}, pp ...s
 			}
 
 		default:
-			return fmt.Errorf("unable to cast type %T to types.Record", new)
+			return fmt.Errorf("unable to cast type %T to types.RecordValueSet", new)
 		}
 
 		return nil
@@ -172,4 +202,8 @@ func (t *Namespace) Set(new interface{}, pp ...string) (err error) {
 	}
 	t.value = aux
 	return nil
+}
+
+func (t *RecordValueErrorSet) Set(new interface{}, pp ...string) (err error) {
+	return fmt.Errorf("pending implementation")
 }

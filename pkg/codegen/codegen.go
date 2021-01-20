@@ -279,7 +279,7 @@ func Proc() {
 				}
 			}
 
-			if outputErr(err, "failed to process store:\n") {
+			if outputErr(err, "failed to process automation functions:\n") {
 				return
 			}
 

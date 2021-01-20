@@ -103,6 +103,24 @@ func (Float) Type() string { return "Float" }
 // Casts value to float64
 func (Float) Cast(value interface{}) (TypedValue, error) { return NewFloat(value) }
 
+// Handle is an expression type, wrapper for string type
+type Handle struct{ value string }
+
+// NewHandle creates new instance of Handle expression type
+func NewHandle(new interface{}) (TypedValue, error) {
+	t := &Handle{}
+	return t, t.Set(new)
+}
+
+// Returns underlying value on Handle
+func (t Handle) Get() interface{} { return t.value }
+
+// Returns type name
+func (Handle) Type() string { return "Handle" }
+
+// Casts value to string
+func (Handle) Cast(value interface{}) (TypedValue, error) { return NewHandle(value) }
+
 // ID is an expression type, wrapper for uint64 type
 type ID struct{ value uint64 }
 

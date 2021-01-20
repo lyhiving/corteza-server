@@ -13,9 +13,7 @@ import (
 	atypes "github.com/cortezaproject/corteza-server/automation/types"
 	"github.com/cortezaproject/corteza-server/compose/types"
 	"github.com/cortezaproject/corteza-server/pkg/expr"
-	"github.com/cortezaproject/corteza-server/pkg/logger"
 	"github.com/cortezaproject/corteza-server/pkg/wfexec"
-	"go.uber.org/zap"
 )
 
 var _ wfexec.ExecResponse
@@ -35,16 +33,12 @@ func (h modulesHandler) register() {
 
 type (
 	modulesLookupArgs struct {
-		log *zap.Logger
-
-		hasModule bool
-
+		hasModule    bool
 		Module       interface{}
 		moduleID     uint64
 		moduleHandle string
 
-		hasNamespace bool
-
+		hasNamespace    bool
 		Namespace       interface{}
 		namespaceID     uint64
 		namespaceHandle string
@@ -64,7 +58,8 @@ type (
 // }
 func (h modulesHandler) Lookup() *atypes.Function {
 	return &atypes.Function{
-		Ref: "composeModulesLookup",
+		Ref:  "composeModulesLookup",
+		Type: "",
 		Meta: &atypes.FunctionMeta{
 			Short: "Lookup for compose module by ID",
 		},
@@ -72,11 +67,11 @@ func (h modulesHandler) Lookup() *atypes.Function {
 		Parameters: []*atypes.Param{
 			{
 				Name:  "module",
-				Types: []string{"ID", "String"}, Required: true,
+				Types: []string{"ID", "Handle"}, Required: true,
 			},
 			{
 				Name:  "namespace",
-				Types: []string{"ID", "String", "ComposeNamespace"}, Required: true,
+				Types: []string{"ID", "Handle", "ComposeNamespace"}, Required: true,
 			},
 		},
 
@@ -91,13 +86,9 @@ func (h modulesHandler) Lookup() *atypes.Function {
 		Handler: func(ctx context.Context, in expr.Vars) (out expr.Vars, err error) {
 			var (
 				args = &modulesLookupArgs{
-					log: logger.ContextValue(ctx, zap.NewNop()).
-						With(zap.String("function", "composeModulesLookup")),
 					hasModule:    in.Has("module"),
 					hasNamespace: in.Has("namespace"),
 				}
-
-				results *modulesLookupResults
 			)
 
 			if err = in.Decode(args); err != nil {
@@ -122,6 +113,7 @@ func (h modulesHandler) Lookup() *atypes.Function {
 				args.namespaceRes = casted
 			}
 
+			var results *modulesLookupResults
 			if results, err = h.lookup(ctx, args); err != nil {
 				return
 			}

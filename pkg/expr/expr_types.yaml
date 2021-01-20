@@ -11,6 +11,7 @@ types:
   UnsignedInteger: 'uint64'
   Float:           'float64'
   String:          'string'
+  Handle:          'string'
   DateTime:        '*time.Time'
   Duration:        'time.Duration'
   KV:              'map[string]string'

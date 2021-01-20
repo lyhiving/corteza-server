@@ -12,9 +12,7 @@ import (
 	"context"
 	atypes "github.com/cortezaproject/corteza-server/automation/types"
 	"github.com/cortezaproject/corteza-server/pkg/expr"
-	"github.com/cortezaproject/corteza-server/pkg/logger"
 	"github.com/cortezaproject/corteza-server/pkg/wfexec"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"net/url"
@@ -38,54 +36,40 @@ func (h httpRequestHandler) register() {
 
 type (
 	httpRequestSendArgs struct {
-		log *zap.Logger
-
 		hasUrl bool
-
-		Url string
+		Url    string
 
 		hasMethod bool
-
-		Method string
+		Method    string
 
 		hasParams bool
-
-		Params url.Values
+		Params    url.Values
 
 		hasHeaders bool
-
-		Headers http.Header
+		Headers    http.Header
 
 		hasHeaderAuthBearer bool
-
-		HeaderAuthBearer string
+		HeaderAuthBearer    string
 
 		hasHeaderAuthUsername bool
-
-		HeaderAuthUsername string
+		HeaderAuthUsername    string
 
 		hasHeaderAuthPassword bool
-
-		HeaderAuthPassword string
+		HeaderAuthPassword    string
 
 		hasHeaderUserAgent bool
-
-		HeaderUserAgent string
+		HeaderUserAgent    string
 
 		hasHeaderContentType bool
-
-		HeaderContentType string
+		HeaderContentType    string
 
 		hasTimeout bool
-
-		Timeout time.Duration
+		Timeout    time.Duration
 
 		hasForm bool
+		Form    url.Values
 
-		Form url.Values
-
-		hasBody bool
-
+		hasBody    bool
 		Body       interface{}
 		bodyString string
 		bodyStream io.Reader
@@ -110,7 +94,8 @@ type (
 // }
 func (h httpRequestHandler) Send() *atypes.Function {
 	return &atypes.Function{
-		Ref: "httpRequestSend",
+		Ref:  "httpRequestSend",
+		Type: "",
 		Meta: &atypes.FunctionMeta{
 			Short: "Sends HTTP request",
 		},
@@ -202,8 +187,6 @@ func (h httpRequestHandler) Send() *atypes.Function {
 		Handler: func(ctx context.Context, in expr.Vars) (out expr.Vars, err error) {
 			var (
 				args = &httpRequestSendArgs{
-					log: logger.ContextValue(ctx, zap.NewNop()).
-						With(zap.String("function", "httpRequestSend")),
 					hasUrl:                in.Has("url"),
 					hasMethod:             in.Has("method"),
 					hasParams:             in.Has("params"),
@@ -217,8 +200,6 @@ func (h httpRequestHandler) Send() *atypes.Function {
 					hasForm:               in.Has("form"),
 					hasBody:               in.Has("body"),
 				}
-
-				results *httpRequestSendResults
 			)
 
 			if err = in.Decode(args); err != nil {
@@ -235,6 +216,7 @@ func (h httpRequestHandler) Send() *atypes.Function {
 				args.bodyRaw = casted
 			}
 
+			var results *httpRequestSendResults
 			if results, err = h.send(ctx, args); err != nil {
 				return
 			}

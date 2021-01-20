@@ -12,9 +12,7 @@ import (
 	atypes "github.com/cortezaproject/corteza-server/automation/types"
 	"context"
 	"github.com/cortezaproject/corteza-server/pkg/expr"
-	"github.com/cortezaproject/corteza-server/pkg/logger"
 	"github.com/cortezaproject/corteza-server/pkg/wfexec"
-	"go.uber.org/zap"
 {{- range .Imports }}
   {{ normalizeImport . }}
 {{- end }}
@@ -45,11 +43,10 @@ func (h {{ $.Name }}Handler) register() {
 
 type (
 	{{ $ARGS }} struct {
-		log *zap.Logger
 		{{ range .Params }}
 			{{ $NAME := .Name }}
 			has{{ export .Name }} bool
-			{{ if gt (len .Types) 1 }}
+			{{- if gt (len .Types) 1 }}
 				{{ export .Name }} interface{}
 				{{- range .Types }}
 					{{ $NAME }}{{ export .Suffix }} {{ .GoType }}
@@ -80,6 +77,7 @@ type (
 func (h {{ $.Name }}Handler) {{ export .Name }}() *atypes.Function {
 	return &atypes.Function{
 		Ref: {{ printf "%q" ( $REF ) }},
+		Type: {{ printf "%q" .Type }},
 		{{- if .Meta }}
 		Meta: &atypes.FunctionMeta{
 			{{- if .Meta.Short }}
@@ -118,10 +116,8 @@ func (h {{ $.Name }}Handler) {{ export .Name }}() *atypes.Function {
 		{{- end }}
 		},
 
-		{{ if .Iterator }}
-		IsIterator: true,
 
-		{{ else if .Results }}
+		{{ if .Results }}
 		Results: []*atypes.Param{
 		{{ range .Results }}
 			{
@@ -147,38 +143,17 @@ func (h {{ $.Name }}Handler) {{ export .Name }}() *atypes.Function {
 		},
 		{{ end }}
 
-		{{ if .Iterator }}
+		{{ if eq .Type "iterator" }}
 		Iterator: func(ctx context.Context, in expr.Vars) (out wfexec.IteratorHandler, err error) {
 			var (
 				args = &{{ $ARGS }}{
-					log: logger.ContextValue(ctx, zap.NewNop()).
-						With(zap.String("function", {{ printf "%q" ( $REF ) }})),
 				{{- range .Params }}
 					has{{ export .Name }}: in.Has({{ printf "%q" .Name }}),
 				{{- end }}
 				}
-
-				{{ if .Results }}
-				results *{{ $RESULTS }}
-				{{ end }}
 			)
 
-			if err = in.Decode(args); err != nil {
-				return
-			}
-
-			{{ range .Params }}
-				{{ $NAME := .Name }}
-				{{ if gt (len .Types) 1 }}
-				// Converting {{ export .Name }} to go type
-				switch casted := args.{{ export .Name }}.(type) {
-				{{- range .Types }}
-					case {{ .GoType }}:
-						args.{{ $NAME }}{{ export .Suffix }} = casted
-				{{- end -}}
-				}
-				{{- end }}
-			{{ end }}
+			{{ template "params" .Params }}
 
 			return h.{{ .Name }}(ctx, args)
 		},
@@ -186,37 +161,16 @@ func (h {{ $.Name }}Handler) {{ export .Name }}() *atypes.Function {
 		Handler: func(ctx context.Context, in expr.Vars) (out expr.Vars, err error) {
 			var (
 				args = &{{ $ARGS }}{
-					log: logger.ContextValue(ctx, zap.NewNop()).
-						With(zap.String("function", {{ printf "%q" ( $REF ) }})),
 				{{- range .Params }}
 					has{{ export .Name }}: in.Has({{ printf "%q" .Name }}),
 				{{- end }}
 				}
-
-				{{ if .Results }}
-				results *{{ $RESULTS }}
-				{{ end }}
 			)
 
-			if err = in.Decode(args); err != nil {
-				return
-			}
-
-			{{ range .Params }}
-				{{ $NAME := .Name }}
-				{{ if gt (len .Types) 1 }}
-				// Converting {{ export .Name }} to go type
-				switch casted := args.{{ export .Name }}.(type) {
-				{{- range .Types }}
-					case {{ .GoType }}:
-						args.{{ $NAME }}{{ export .Suffix }} = casted
-				{{- end -}}
-				}
-				{{- end }}
-			{{ end }}
-
+			{{ template "params" .Params }}
 
 			{{ if .Results }}
+			var results *{{ $RESULTS }}
 			if results, err = h.{{ .Name }}(ctx, args); err != nil {
 				return
 			}
@@ -237,4 +191,23 @@ func (h {{ $.Name }}Handler) {{ export .Name }}() *atypes.Function {
 		{{ end }}
 	}
 }
+{{ end }}
+
+{{ define "params" }}
+	if err = in.Decode(args); err != nil {
+		return
+	}
+
+	{{ range . }}
+		{{ $NAME := .Name }}
+		{{ if gt (len .Types) 1 }}
+		// Converting {{ export .Name }} to go type
+		switch casted := args.{{ export .Name }}.(type) {
+		{{- range .Types }}
+			case {{ .GoType }}:
+				args.{{ $NAME }}{{ export .Suffix }} = casted
+		{{- end -}}
+		}
+		{{- end }}
+	{{ end }}
 {{ end }}

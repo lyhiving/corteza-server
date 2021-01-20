@@ -27,10 +27,8 @@ type (
 		Next(context.Context, expr.Vars) (Step, expr.Vars, error)
 	}
 
-	genericIterator struct {
-		iter, next, exit Step
-
-		h IteratorHandler
+	ResultEvaluator interface {
+		EvalResults(ctx context.Context, results expr.Vars) (out expr.Vars, err error)
 	}
 
 	IteratorHandler interface {
@@ -38,8 +36,17 @@ type (
 		More(context.Context, expr.Vars) (bool, error)
 		Next(context.Context, expr.Vars) (expr.Vars, error)
 	}
+
+	// Handles communication between Session's exec() fn and iterator handler
+	genericIterator struct {
+		iter, next, exit Step
+
+		h IteratorHandler
+	}
 )
 
+// GenericIterator creates a wrapper around IteratorHandler and
+// returns genericIterator that implements Iterator interface
 func GenericIterator(iter, next, exit Step, h IteratorHandler) Iterator {
 	return &genericIterator{
 		iter: iter,
@@ -53,13 +60,32 @@ func (i *genericIterator) Is(s Step) bool                               { return
 func (i *genericIterator) Start(ctx context.Context, s expr.Vars) error { return i.h.Start(ctx, s) }
 func (i *genericIterator) Break() Step                                  { return i.exit }
 func (i *genericIterator) Iterator() Step                               { return i.iter }
+
+// Next calls More and Next functions on iterator handler.
+//
+// If iterator step (iter field) implements ResultEvaluator it calls
+// EvalResults on it before returning it. If iterator step does not implement it,
+// results are omitted.
 func (i *genericIterator) Next(ctx context.Context, scope expr.Vars) (next Step, out expr.Vars, err error) {
-	var more bool
+	var (
+		more    bool
+		results expr.Vars
+	)
 	if more, err = i.h.More(ctx, scope); err != nil || !more {
 		return
 	}
 
+	if results, err = i.h.Next(ctx, scope); err != nil {
+		return
+	}
+
+	if re, is := i.iter.(ResultEvaluator); is {
+		if out, err = re.EvalResults(ctx, results); err != nil {
+			return
+		}
+	}
+
 	next = i.next
-	out, err = i.h.Next(ctx, scope)
+
 	return
 }

@@ -13,9 +13,7 @@ import (
 	atypes "github.com/cortezaproject/corteza-server/automation/types"
 	"github.com/cortezaproject/corteza-server/compose/types"
 	"github.com/cortezaproject/corteza-server/pkg/expr"
-	"github.com/cortezaproject/corteza-server/pkg/logger"
 	"github.com/cortezaproject/corteza-server/pkg/wfexec"
-	"go.uber.org/zap"
 )
 
 var _ wfexec.ExecResponse
@@ -35,10 +33,7 @@ func (h namespacesHandler) register() {
 
 type (
 	namespacesLookupArgs struct {
-		log *zap.Logger
-
-		hasNamespace bool
-
+		hasNamespace    bool
 		Namespace       interface{}
 		namespaceID     uint64
 		namespaceHandle string
@@ -57,7 +52,8 @@ type (
 // }
 func (h namespacesHandler) Lookup() *atypes.Function {
 	return &atypes.Function{
-		Ref: "composeNamespacesLookup",
+		Ref:  "composeNamespacesLookup",
+		Type: "",
 		Meta: &atypes.FunctionMeta{
 			Short: "Lookup for compose namespace by ID",
 		},
@@ -65,7 +61,7 @@ func (h namespacesHandler) Lookup() *atypes.Function {
 		Parameters: []*atypes.Param{
 			{
 				Name:  "namespace",
-				Types: []string{"ID", "String"}, Required: true,
+				Types: []string{"ID", "Handle"}, Required: true,
 			},
 		},
 
@@ -80,12 +76,8 @@ func (h namespacesHandler) Lookup() *atypes.Function {
 		Handler: func(ctx context.Context, in expr.Vars) (out expr.Vars, err error) {
 			var (
 				args = &namespacesLookupArgs{
-					log: logger.ContextValue(ctx, zap.NewNop()).
-						With(zap.String("function", "composeNamespacesLookup")),
 					hasNamespace: in.Has("namespace"),
 				}
-
-				results *namespacesLookupResults
 			)
 
 			if err = in.Decode(args); err != nil {
@@ -100,6 +92,7 @@ func (h namespacesHandler) Lookup() *atypes.Function {
 				args.namespaceHandle = casted
 			}
 
+			var results *namespacesLookupResults
 			if results, err = h.lookup(ctx, args); err != nil {
 				return
 			}

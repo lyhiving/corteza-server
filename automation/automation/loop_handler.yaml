@@ -6,16 +6,26 @@ imports:
 
 functions:
   sequence:
-    iterator: true
+    type: iterator
     meta:
       short: Iterates over sequence of numbers
     params:
       first: { types: [ { wf: Integer, go: 'int64' } ] }
       last:  { types: [ { wf: Integer, go: 'int64' } ] }
       step:  { types: [ { wf: Integer, go: 'int64' } ] }
+    results:
+      counter:
+        wf: Integer
+        go: int
+      isFirst:
+        wf: Boolean
+        go: bool
+      isLast:
+        wf: Boolean
+        go: bool
 
   do:
-    iterator: true
+    type: iterator
     meta:
       short: Iterates while condition is true
     params:
@@ -27,19 +37,27 @@ functions:
           description: Expression to be evaluated each iteration; loop will continue until expression is true
 
   each:
-    iterator: true
+    type: iterator
     meta:
       short: Iterates over set of items
     params:
       items:
         required: true
         types: [ { wf: Any, go: "[]interface{}" } ]
+    results:
+      item:
+        wf: Any
+        go: 'interface{}'
 
   lines:
-    iterator: true
+    type: iterator
     meta:
       short: Iterates over lines from stream
     params:
       stream:
         required: true
         types: [ { wf: Reader, go: "io.Reader" } ]
+    results:
+      line:
+        wf: String
+        go: string

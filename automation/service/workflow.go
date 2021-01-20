@@ -673,7 +673,7 @@ func (svc *workflow) convFunctionStep(g *wfexec.Graph, s *types.WorkflowStep, ou
 			err error
 		)
 
-		if def.IsIterator {
+		if def.Type == types.FTypeIterator {
 			if len(out) != 2 {
 				return nil, fmt.Errorf("expecting exactly two paths (next, exit) out of iterator function step")
 			}
@@ -693,7 +693,7 @@ func (svc *workflow) convFunctionStep(g *wfexec.Graph, s *types.WorkflowStep, ou
 			return nil, errors.Internal("failed to convert arguments for function %s: %s", s.Ref, err).Wrap(err)
 		}
 
-		if def.IsIterator {
+		if def.Type == types.FTypeIterator {
 			var (
 				next = g.StepByID(out[0].ChildID)
 				exit = g.StepByID(out[1].ChildID)

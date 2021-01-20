@@ -8,7 +8,7 @@ params:
     required: true
     types:
       - { wf: ID,                 go: uint64,             suffix: ID }
-      - { wf: String,             go: string,             suffix: handle }
+      - { wf: Handle,             go: string,             suffix: handle }
 
   namespaceReturnValue: &namespaceReturnValue
     wf: ComposeNamespace

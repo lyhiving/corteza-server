@@ -2,6 +2,7 @@ package automation
 
 import (
 	"context"
+	"fmt"
 	"github.com/cortezaproject/corteza-server/compose/types"
 )
 
@@ -13,6 +14,8 @@ type (
 		Create(ctx context.Context, record *types.Record) (*types.Record, error)
 		Update(ctx context.Context, record *types.Record) (*types.Record, error)
 		Bulk(ctx context.Context, oo ...*types.RecordBulkOperation) (types.RecordSet, error)
+
+		Validate(ctx context.Context, rec *types.Record) error
 
 		DeleteByID(ctx context.Context, namespaceID, moduleID uint64, recordID ...uint64) error
 	}
@@ -121,6 +124,80 @@ func (h recordsHandler) save(ctx context.Context, args *recordsSaveArgs) (result
 	results = &recordsSaveResults{}
 	results.Record, err = h.rec.Update(ctx, args.Record)
 	return
+}
+
+func (h recordsHandler) validate(ctx context.Context, args *recordsValidateArgs) (*recordsValidateResults, error) {
+	if err := h.resolveNamespace(ctx, &args.namespaceID, args.namespaceHandle, args.namespaceRes); err != nil {
+		return nil, err
+	}
+
+	if err := h.resolveModule(ctx, args.namespaceID, &args.moduleID, args.moduleHandle, args.moduleRes); err != nil {
+		return nil, err
+	}
+
+	results := &recordsValidateResults{Valid: true, Errors: &types.RecordValueErrorSet{}}
+	if err := h.rec.Validate(ctx, args.Record); err != nil {
+		results.Valid = false
+
+		if rves, is := err.(*types.RecordValueErrorSet); is {
+			results.Errors = rves
+		} else {
+			return nil, err
+		}
+	}
+
+	return results, nil
+}
+
+func (h recordsHandler) convert(ctx context.Context, args *recordsConvertArgs) (results *recordsConvertResults, err error) {
+	var (
+		sModule, tModule *types.Module
+	)
+
+	if sModule, err = h.mod.FindByID(ctx, args.Source.NamespaceID, args.Source.ModuleID); err != nil {
+		return
+	}
+
+	if err = h.resolveNamespace(ctx, &args.namespaceID, args.namespaceHandle, args.namespaceRes); err != nil {
+		return
+	}
+
+	if err = h.resolveModule(ctx, args.namespaceID, &args.moduleID, args.moduleHandle, args.moduleRes); err != nil {
+		return
+	}
+
+	if args.moduleRes == nil {
+		if tModule, err = h.mod.FindByID(ctx, args.namespaceID, args.moduleID); err != nil {
+			return
+		}
+	}
+
+	rvs := types.RecordValueSet{}
+
+	for sField, tField := range args.Map {
+		if !sModule.Fields.HasName(sField) {
+			return nil, fmt.Errorf("no such field %s on target module %s", sField, sModule.Handle)
+		}
+
+		if !tModule.Fields.HasName(tField) {
+			return nil, fmt.Errorf("no such field %s on target module %s", tField, tModule.Handle)
+		}
+
+		_ = args.Source.Values.FilterByName(sField).Walk(func(v *types.RecordValue) error {
+			rvs = rvs.Set(v)
+			return nil
+		})
+	}
+
+	results = &recordsConvertResults{
+		Record: &types.Record{
+			ModuleID:    tModule.ID,
+			NamespaceID: tModule.NamespaceID,
+			Values:      rvs,
+		},
+	}
+
+	return results, nil
 }
 
 func (h recordsHandler) update(ctx context.Context, args *recordsUpdateArgs) (results *recordsUpdateResults, err error) {

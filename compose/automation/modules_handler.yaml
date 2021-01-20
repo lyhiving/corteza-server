@@ -8,13 +8,13 @@ params:
     required: true
     types:
       - { wf: ID,                 go: uint64,          suffix: ID }
-      - { wf: String,             go: string,          suffix: handle }
+      - { wf: Handle,             go: string,          suffix: handle }
 
   namespace: &namespace
     required: true
     types:
       - { wf: ID,                 go: uint64,             suffix: ID }
-      - { wf: String,             go: string,             suffix: handle }
+      - { wf: Handle,             go: string,             suffix: handle }
       - { wf: ComposeNamespace,   go: "*types.Namespace", suffix: res }
 
   moduleReturnValue: &moduleReturnValue

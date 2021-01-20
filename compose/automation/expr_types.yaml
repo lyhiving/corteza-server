@@ -5,9 +5,10 @@ imports:
 prefix: Compose
 
 types:
-  Namespace:      '*types.Namespace'
-  Module:         '*types.Module'
-  Record:         '*types.Record'
-  RecordValues:   'types.RecordValueSet'
+  Namespace:           '*types.Namespace'
+  Module:              '*types.Module'
+  Record:              '*types.Record'
+  RecordValues:        'types.RecordValueSet'
+  RecordValueErrorSet: '*types.RecordValueErrorSet'
 #  Page:      '*types.Page'
 #  Chart:     '*types.Chart'

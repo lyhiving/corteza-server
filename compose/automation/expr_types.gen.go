@@ -67,6 +67,26 @@ func (Record) Type() string { return "ComposeRecord" }
 // Casts value to *types.Record
 func (Record) Cast(value interface{}) (expr.TypedValue, error) { return NewRecord(value) }
 
+// RecordValueErrorSet is an expression type, wrapper for *types.RecordValueErrorSet type
+type RecordValueErrorSet struct{ value *types.RecordValueErrorSet }
+
+// NewRecordValueErrorSet creates new instance of RecordValueErrorSet expression type
+func NewRecordValueErrorSet(new interface{}) (expr.TypedValue, error) {
+	t := &RecordValueErrorSet{}
+	return t, t.Set(new)
+}
+
+// Returns underlying value on RecordValueErrorSet
+func (t RecordValueErrorSet) Get() interface{} { return t.value }
+
+// Returns type name
+func (RecordValueErrorSet) Type() string { return "ComposeRecordValueErrorSet" }
+
+// Casts value to *types.RecordValueErrorSet
+func (RecordValueErrorSet) Cast(value interface{}) (expr.TypedValue, error) {
+	return NewRecordValueErrorSet(value)
+}
+
 // RecordValues is an expression type, wrapper for types.RecordValueSet type
 type RecordValues struct{ value types.RecordValueSet }
 

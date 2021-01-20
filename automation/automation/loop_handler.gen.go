@@ -12,9 +12,7 @@ import (
 	"context"
 	atypes "github.com/cortezaproject/corteza-server/automation/types"
 	"github.com/cortezaproject/corteza-server/pkg/expr"
-	"github.com/cortezaproject/corteza-server/pkg/logger"
 	"github.com/cortezaproject/corteza-server/pkg/wfexec"
-	"go.uber.org/zap"
 	"io"
 )
 
@@ -38,19 +36,20 @@ func (h loopHandler) register() {
 
 type (
 	loopSequenceArgs struct {
-		log *zap.Logger
-
 		hasFirst bool
-
-		First int64
+		First    int64
 
 		hasLast bool
-
-		Last int64
+		Last    int64
 
 		hasStep bool
+		Step    int64
+	}
 
-		Step int64
+	loopSequenceResults struct {
+		Counter int
+		IsFirst bool
+		IsLast  bool
 	}
 )
 
@@ -62,7 +61,8 @@ type (
 // }
 func (h loopHandler) Sequence() *atypes.Function {
 	return &atypes.Function{
-		Ref: "loopSequence",
+		Ref:  "loopSequence",
+		Type: "iterator",
 		Meta: &atypes.FunctionMeta{
 			Short: "Iterates over sequence of numbers",
 		},
@@ -82,13 +82,27 @@ func (h loopHandler) Sequence() *atypes.Function {
 			},
 		},
 
-		IsIterator: true,
+		Results: []*atypes.Param{
+
+			{
+				Name:  "counter",
+				Types: []string{"Integer"},
+			},
+
+			{
+				Name:  "isFirst",
+				Types: []string{"Boolean"},
+			},
+
+			{
+				Name:  "isLast",
+				Types: []string{"Boolean"},
+			},
+		},
 
 		Iterator: func(ctx context.Context, in expr.Vars) (out wfexec.IteratorHandler, err error) {
 			var (
 				args = &loopSequenceArgs{
-					log: logger.ContextValue(ctx, zap.NewNop()).
-						With(zap.String("function", "loopSequence")),
 					hasFirst: in.Has("first"),
 					hasLast:  in.Has("last"),
 					hasStep:  in.Has("step"),
@@ -106,11 +120,8 @@ func (h loopHandler) Sequence() *atypes.Function {
 
 type (
 	loopDoArgs struct {
-		log *zap.Logger
-
 		hasWhile bool
-
-		While string
+		While    string
 	}
 )
 
@@ -122,7 +133,8 @@ type (
 // }
 func (h loopHandler) Do() *atypes.Function {
 	return &atypes.Function{
-		Ref: "loopDo",
+		Ref:  "loopDo",
+		Type: "iterator",
 		Meta: &atypes.FunctionMeta{
 			Short: "Iterates while condition is true",
 		},
@@ -138,13 +150,9 @@ func (h loopHandler) Do() *atypes.Function {
 			},
 		},
 
-		IsIterator: true,
-
 		Iterator: func(ctx context.Context, in expr.Vars) (out wfexec.IteratorHandler, err error) {
 			var (
 				args = &loopDoArgs{
-					log: logger.ContextValue(ctx, zap.NewNop()).
-						With(zap.String("function", "loopDo")),
 					hasWhile: in.Has("while"),
 				}
 			)
@@ -160,11 +168,12 @@ func (h loopHandler) Do() *atypes.Function {
 
 type (
 	loopEachArgs struct {
-		log *zap.Logger
-
 		hasItems bool
+		Items    []interface{}
+	}
 
-		Items []interface{}
+	loopEachResults struct {
+		Item interface{}
 	}
 )
 
@@ -176,7 +185,8 @@ type (
 // }
 func (h loopHandler) Each() *atypes.Function {
 	return &atypes.Function{
-		Ref: "loopEach",
+		Ref:  "loopEach",
+		Type: "iterator",
 		Meta: &atypes.FunctionMeta{
 			Short: "Iterates over set of items",
 		},
@@ -188,13 +198,17 @@ func (h loopHandler) Each() *atypes.Function {
 			},
 		},
 
-		IsIterator: true,
+		Results: []*atypes.Param{
+
+			{
+				Name:  "item",
+				Types: []string{"Any"},
+			},
+		},
 
 		Iterator: func(ctx context.Context, in expr.Vars) (out wfexec.IteratorHandler, err error) {
 			var (
 				args = &loopEachArgs{
-					log: logger.ContextValue(ctx, zap.NewNop()).
-						With(zap.String("function", "loopEach")),
 					hasItems: in.Has("items"),
 				}
 			)
@@ -210,11 +224,12 @@ func (h loopHandler) Each() *atypes.Function {
 
 type (
 	loopLinesArgs struct {
-		log *zap.Logger
-
 		hasStream bool
+		Stream    io.Reader
+	}
 
-		Stream io.Reader
+	loopLinesResults struct {
+		Line string
 	}
 )
 
@@ -226,7 +241,8 @@ type (
 // }
 func (h loopHandler) Lines() *atypes.Function {
 	return &atypes.Function{
-		Ref: "loopLines",
+		Ref:  "loopLines",
+		Type: "iterator",
 		Meta: &atypes.FunctionMeta{
 			Short: "Iterates over lines from stream",
 		},
@@ -238,13 +254,17 @@ func (h loopHandler) Lines() *atypes.Function {
 			},
 		},
 
-		IsIterator: true,
+		Results: []*atypes.Param{
+
+			{
+				Name:  "line",
+				Types: []string{"String"},
+			},
+		},
 
 		Iterator: func(ctx context.Context, in expr.Vars) (out wfexec.IteratorHandler, err error) {
 			var (
 				args = &loopLinesArgs{
-					log: logger.ContextValue(ctx, zap.NewNop()).
-						With(zap.String("function", "loopLines")),
 					hasStream: in.Has("stream"),
 				}
 			)

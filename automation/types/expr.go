@@ -119,8 +119,8 @@ func (set ExprSet) Eval(ctx context.Context, in expr.Vars) (expr.Vars, error) {
 		// Base target
 		base string
 
-		isKnownType = func(p expr.Type) bool {
-			return p == nil || p.Type() == expr.Any{}.Type()
+		knownType = func(p expr.Type) bool {
+			return p != nil && p.Type() != expr.Any{}.Type() && p.Type() != expr.Unresolved{}.Type()
 		}
 	)
 
@@ -168,17 +168,26 @@ func (set ExprSet) Eval(ctx context.Context, in expr.Vars) (expr.Vars, error) {
 			}
 		}
 
-		if isKnownType(e.typ) && isKnownType(typedValue) && typedValue.Type() != e.typ.Type() {
+		if !knownType(e.typ) && !knownType(typedValue) && typedValue.Type() != e.typ.Type() {
 			// Both, expression & value have type set;
 			// check if it's the same type or return an error
 			return nil, fmt.Errorf("cannot set to %q (type %s) value of type %s", e.Target, e.typ.Type(), typedValue.Type())
 		}
 
-		if e.typ != nil && !isKnownType(typedValue) {
-			// Expression has fixed type but value does not
-			// cast the value of evaluation to type of the expression
-			if typedValue, err = e.typ.Cast(value); err != nil {
-				return nil, err
+		if e.typ != nil {
+			if !knownType(typedValue) {
+				println(e.Target, "fixed + unknown")
+				// Expression has fixed type but value does not
+				// cast the value of evaluation to type of the expression
+				if typedValue, err = e.typ.Cast(value); err != nil {
+					return nil, err
+				}
+			} else if e.typ.Type() != typedValue.Type() && e.typ.Type() != (expr.Any{}).Type() {
+				//
+				println(e.Target, "fixed + fixed")
+				if typedValue, err = e.typ.Cast(value); err != nil {
+					return nil, err
+				}
 			}
 		}
 

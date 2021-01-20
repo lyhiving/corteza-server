@@ -4,8 +4,9 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"github.com/PaesslerAG/gval"
 	"github.com/cortezaproject/corteza-server/pkg/errors"
-	"github.com/davecgh/go-spew/spew"
+	"github.com/spf13/cast"
 	"reflect"
 	"strings"
 )
@@ -175,6 +176,9 @@ func (vv Vars) Dict() map[string]interface{} {
 	dict := make(map[string]interface{})
 	for k, v := range vv {
 		switch v := v.(type) {
+		case gval.Selector:
+			dict[k] = v
+
 		case Dict:
 			dict[k] = v.Dict()
 
@@ -221,38 +225,12 @@ func (vv Vars) Decode(dst interface{}) (err error) {
 			continue
 		}
 
-		if err = decodeValueToField(dstRef.Field(i), value); err != nil {
+		if err = decode(dstRef.Field(i), value); err != nil {
 			return fmt.Errorf("failed to decode value to field %s: %w", t.Name, err)
 		}
 	}
 
 	return
-}
-
-func decodeValueToField(f reflect.Value, value interface{}) (err error) {
-	if um, is := value.(Decoder); is {
-		return um.Decode(f)
-	}
-
-	value = UnwindTyped(value)
-	if value != nil {
-		defer func() {
-			r := recover()
-			if r == nil {
-				return
-			}
-
-			if estr, is := r.(string); is {
-				// trim error a bit to get rid of reflect prefix.
-				spew.Dump(value)
-				err = fmt.Errorf("%s", estr[(strings.Index(estr, ":")+2):])
-			}
-		}()
-
-		f.Set(reflect.ValueOf(value))
-	}
-
-	return err
 }
 
 func (vv *Vars) Scan(value interface{}) error {
@@ -311,4 +289,73 @@ func (vv Vars) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(aux)
+}
+
+func decode(dst reflect.Value, src interface{}) (err error) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+
+		switch r := r.(type) {
+		case error:
+			err = r
+		default:
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+
+	if um, is := src.(Decoder); is {
+		return um.Decode(dst)
+	}
+
+	src = UnwindTyped(src)
+
+	var (
+		vBool    bool
+		vInt64   int64
+		vUint64  uint64
+		vFloat64 float64
+		vString  string
+	)
+
+	switch dst.Kind() {
+	case reflect.Bool:
+		if vBool, err = cast.ToBoolE(src); err == nil {
+			dst.SetBool(vBool)
+		}
+
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if vInt64, err = cast.ToInt64E(src); err == nil {
+			dst.SetInt(vInt64)
+		}
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if vUint64, err = cast.ToUint64E(src); err == nil {
+			dst.SetUint(vUint64)
+		}
+
+	case reflect.Float32, reflect.Float64:
+		if vFloat64, err = cast.ToFloat64E(src); err == nil {
+			dst.SetFloat(vFloat64)
+		}
+
+	case reflect.String:
+		if vString, err = cast.ToStringE(src); err == nil {
+			dst.SetString(vString)
+		}
+
+	case reflect.Interface:
+		dst.Set(reflect.ValueOf(src))
+
+	default:
+		return fmt.Errorf("failed to cast %T to %s", src, dst.Kind())
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to cast %T to %s: %w", src, dst.Kind(), err)
+	}
+
+	return nil
 }
