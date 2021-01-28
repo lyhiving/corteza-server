@@ -1,0 +1,13 @@
+package: automation
+imports:
+  - github.com/cortezaproject/corteza-server/compose/types
+
+prefix: Compose
+
+types:
+  Namespace:      '*types.Namespace'
+  Module:         '*types.Module'
+  Record:         '*types.Record'
+  RecordValues:   'types.RecordValueSet'
+#  Page:      '*types.Page'
+#  Chart:     '*types.Chart'

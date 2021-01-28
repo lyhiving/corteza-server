@@ -153,6 +153,31 @@ func Initialize(ctx context.Context, log *zap.Logger, s store.Storer, c Config) 
 
 	RegisterIteratorProviders()
 
+	automationService.Registry().AddTypes(
+		automation.Namespace{},
+		automation.Module{},
+		automation.Record{},
+		automation.RecordValues{},
+	)
+
+	automation.RecordsHandler(
+		automationService.Registry(),
+		DefaultNamespace,
+		DefaultModule,
+		DefaultRecord,
+	)
+
+	automation.ModulesHandler(
+		automationService.Registry(),
+		DefaultNamespace,
+		DefaultModule,
+	)
+
+	automation.NamespacesHandler(
+		automationService.Registry(),
+		DefaultNamespace,
+	)
+
 	return nil
 }
 
